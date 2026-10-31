@@ -48,10 +48,15 @@ npm install
 npm run dev                      # http://localhost:3000 (proxies /api to :8000)
 ```
 
-Tests (19, includes a full end-to-end workflow):
+Tests (21, includes a full end-to-end workflow and the stall sweep):
 ```bash
-cd backend && .venv/bin/python -m pytest tests -q
+cd backend && .venv/bin/python -m pytest -q
 ```
+
+Schema is managed by Alembic and upgraded to head on startup
+(`backend/alembic/versions/`). To add a migration after a model change:
+`cd backend && .venv/bin/alembic revision --autogenerate -m "describe change"`.
+(A `teampilot.db` created before migrations existed must be deleted once.)
 
 ## Try the demo flow (no credentials needed)
 
@@ -79,6 +84,10 @@ cd backend && .venv/bin/python -m pytest tests -q
   API returns 409 if you try.
 - Loop guards: per-task agent-message budget and attempt limits escalate to
   humans instead of retrying forever.
+- Time guards: a housekeeping sweep blocks tasks with no activity for
+  `STALE_TASK_MINUTES` (20) and pages a human; agents silent for
+  `AGENT_OFFLINE_MINUTES` (10) are shown offline. The coordinator is online
+  exactly while the backend process runs.
 
 ## Message cards
 
@@ -94,7 +103,7 @@ cards are stored as chat and never executed.
 backend/    FastAPI + SQLAlchemy: coordination engine, Switch adapter, SSE
 frontend/   Next.js dashboard: overview, chat, kanban, agents, approvals, activity
 demo-repo/  tiny app with the seeded bug for the live demo
-docs/       ARCHITECTURE.md · SWITCH_INTEGRATION.md
+docs/       ARCHITECTURE.md · SWITCH_INTEGRATION.md · PROTOCOL.md · DEMO_SCRIPT.md
 agents/     (created Nov 4+) role instructions for the Claude Code agents
 ```
 
@@ -107,4 +116,6 @@ agents/     (created Nov 4+) role instructions for the Claude Code agents
   rule-based planner runs (the UI records which one produced the plan).
 - Auth is a single optional bearer token (`TEAMPILOT_API_TOKEN`) — fine for a
   demo, not multi-user auth.
-- Alembic migrations not yet added; the schema is created on startup.
+- Agent presence is inferred from their cards plus a time-based sweep; with
+  Switch connected, `!agents-status` in the room remains the ground truth for
+  session liveness.

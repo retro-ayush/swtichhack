@@ -29,6 +29,10 @@ class Settings:
     # Loop/retry guards.
     max_agent_messages_per_task: int = 12
     max_task_attempts: int = 3
+    # Time guards (housekeeping sweep): a task with no activity for this long
+    # is blocked and escalated; an agent silent this long is shown offline.
+    stale_task_minutes: int = field(default_factory=lambda: int(_env("STALE_TASK_MINUTES", "20")))
+    agent_offline_minutes: int = field(default_factory=lambda: int(_env("AGENT_OFFLINE_MINUTES", "10")))
 
     @property
     def switch_configured(self) -> bool:

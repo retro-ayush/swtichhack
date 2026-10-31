@@ -1,6 +1,6 @@
 "use client";
 
-import { Badge, Panel } from "@/components/ui";
+import { Badge, ErrorBox, Panel } from "@/components/ui";
 import {
   Agent, AGENT_STATUS_CLS, api, Metrics, Task, TaskEvent, timeAgo, useLive, useProjectId,
 } from "@/lib/api";
@@ -20,8 +20,9 @@ export default function Overview() {
     ]);
     return { metrics, agents, activity, tasks };
   }, [pid]);
-  const { data } = useLive(load);
-  if (!data) return <p className="text-muted">Loading… (is the backend running on :8000?)</p>;
+  const { data, error } = useLive(load);
+  if (error) return <ErrorBox error={error} />;
+  if (!data) return <p className="text-muted">Loading…</p>;
 
   const { metrics: m, agents, activity, tasks } = data;
   const taskKey = (id: number) => tasks.find((t) => t.id === id)?.key ?? `T-${id}`;

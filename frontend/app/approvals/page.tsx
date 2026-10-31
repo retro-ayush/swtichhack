@@ -1,6 +1,6 @@
 "use client";
 
-import { Panel } from "@/components/ui";
+import { ErrorBox, Panel } from "@/components/ui";
 import { api, Approval, post, Task, timeAgo, useLive, useProjectId } from "@/lib/api";
 import { useCallback, useState } from "react";
 
@@ -17,7 +17,8 @@ export default function Approvals() {
     ]);
     return { approvals, tasks };
   }, [pid]);
-  const { data, reload } = useLive(load);
+  const { data, reload, error } = useLive(load);
+  if (error) return <ErrorBox error={error} />;
   if (!data) return <p className="text-muted">Loading…</p>;
 
   const { approvals, tasks } = data;

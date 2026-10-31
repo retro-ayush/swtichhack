@@ -1,6 +1,6 @@
 "use client";
 
-import { Panel } from "@/components/ui";
+import { ErrorBox, Panel } from "@/components/ui";
 import { api, Task, TaskEvent, timeAgo, useLive, useProjectId } from "@/lib/api";
 import { useCallback } from "react";
 
@@ -21,7 +21,8 @@ export default function Activity() {
     ]);
     return { events, tasks };
   }, [pid]);
-  const { data } = useLive(load);
+  const { data, error } = useLive(load);
+  if (error) return <ErrorBox error={error} />;
   if (!data) return <p className="text-muted">Loading…</p>;
 
   const key = (id: number) => data.tasks.find((t) => t.id === id)?.key ?? `T-${id}`;

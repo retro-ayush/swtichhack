@@ -1,6 +1,6 @@
 "use client";
 
-import { Badge, Panel } from "@/components/ui";
+import { Badge, ErrorBox, Panel } from "@/components/ui";
 import {
   Agent, api, post, Run, Task, TaskEvent, timeAgo, useLive, useProjectId,
 } from "@/lib/api";
@@ -131,8 +131,9 @@ export default function Tasks() {
     ]);
     return { tasks, agents };
   }, [pid]);
-  const { data, reload } = useLive(load);
+  const { data, reload, error } = useLive(load);
 
+  if (error) return <ErrorBox error={error} />;
   if (!data) return <p className="text-muted">Loading…</p>;
   const { tasks, agents } = data;
   const sel = tasks.find((t) => t.id === selected) ?? null;

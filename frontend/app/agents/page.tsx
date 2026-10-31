@@ -1,6 +1,6 @@
 "use client";
 
-import { Panel } from "@/components/ui";
+import { ErrorBox, Panel } from "@/components/ui";
 import { Agent, AGENT_STATUS_CLS, api, Task, timeAgo, useLive, useProjectId } from "@/lib/api";
 import { useCallback } from "react";
 
@@ -14,7 +14,8 @@ export default function Agents() {
     ]);
     return { agents, tasks };
   }, [pid]);
-  const { data } = useLive(load);
+  const { data, error } = useLive(load);
+  if (error) return <ErrorBox error={error} />;
   if (!data) return <p className="text-muted">Loading…</p>;
 
   const { agents, tasks } = data;

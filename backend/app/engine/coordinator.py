@@ -197,11 +197,22 @@ def _touch_agent(db: Session, project_id: int, name: str, status: AgentStatus | 
     return agent
 
 
+_PRESENCE: dict[str, AgentStatus] = {
+    "TASK_STARTED": AgentStatus.working, "STATUS_UPDATE": AgentStatus.working,
+    "INFORMATION_REQUEST": AgentStatus.waiting, "HANDOFF": AgentStatus.waiting,
+    "BLOCKER": AgentStatus.blocked, "REVIEW_REQUEST": AgentStatus.waiting,
+    "REVIEW_FEEDBACK": AgentStatus.idle, "TEST_RESULT": AgentStatus.idle,
+    "TASK_COMPLETED": AgentStatus.idle, "HUMAN_APPROVAL_REQUIRED": AgentStatus.waiting,
+}
+
+
 def handle_card(db: Session, project: Project, card: AgentCard, msg: Message) -> None:
     """Apply one validated agent card to project state. Unknown/invalid cards
     never reach this function."""
     task = _task_by_key(db, project.id, card.task_key)
     sender = card.from_agent
+    # Every card is a liveness signal for its sender.
+    _touch_agent(db, project.id, sender, _PRESENCE.get(card.type, AgentStatus.idle))
 
     if task is not None:
         task.agent_message_count += 1

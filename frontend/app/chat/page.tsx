@@ -1,6 +1,6 @@
 "use client";
 
-import { ViaBadge } from "@/components/ui";
+import { ErrorBox, ViaBadge } from "@/components/ui";
 import { api, Message, post, timeAgo, useLive, useProjectId } from "@/lib/api";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -34,7 +34,7 @@ export default function Chat() {
     () => (pid ? api<Message[]>(`/projects/${pid}/messages`) : Promise.resolve(null)),
     [pid],
   );
-  const { data: messages, reload } = useLive(load);
+  const { data: messages, reload, error } = useLive(load);
 
   useEffect(() => { bottom.current?.scrollIntoView({ behavior: "smooth" }); }, [messages?.length]);
 
@@ -54,7 +54,8 @@ export default function Chat() {
     <div className="flex h-full flex-col">
       <h1 className="mb-4 text-xl font-bold">Team Chat</h1>
       <div className="flex-1 space-y-3 overflow-y-auto rounded-xl border border-edge bg-panel p-4">
-        {!messages?.length && (
+        {error && <ErrorBox error={error} />}
+        {!error && !messages?.length && (
           <p className="text-sm text-muted">
             No messages yet. Try: “Investigate the login validation bug, fix it, and verify the solution.”
           </p>

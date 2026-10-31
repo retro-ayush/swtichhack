@@ -91,8 +91,9 @@ executed.
 ## 5. Folder structure
 
 ```
-backend/app/{config,db,models,schemas,events,main,seed}.py
-backend/app/engine/{graph,state,decompose,coordinator}.py
+backend/app/{config,db,models,schemas,events,main,seed,migrate}.py
+backend/app/engine/{graph,state,decompose,coordinator,housekeeping}.py
+backend/alembic/           # migrations (upgraded to head on startup)
 backend/app/switchbridge/{adapter,connector}.py
 backend/app/routers/api.py
 backend/tests/

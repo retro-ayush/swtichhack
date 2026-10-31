@@ -23,6 +23,19 @@ export function ViaBadge({ via }: { via: string }) {
   );
 }
 
+export function ErrorBox({ error }: { error: string }) {
+  return (
+    <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-4 text-sm">
+      <div className="font-semibold text-red-300">Backend unreachable</div>
+      <p className="mt-1 text-muted">
+        {error.replace(/^Error: /, "")}. Start it with{" "}
+        <code className="rounded bg-background px-1 font-mono text-xs">uvicorn app.main:app --port 8000</code>{" "}
+        in <code className="font-mono text-xs">backend/</code>; this page reconnects automatically.
+      </p>
+    </div>
+  );
+}
+
 export function Panel({ title, children, right }: {
   title?: string; children: React.ReactNode; right?: React.ReactNode;
 }) {

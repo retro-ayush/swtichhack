@@ -20,7 +20,7 @@ ALLOWED: dict[TaskStatus, set[TaskStatus]] = {
     S.ready: {S.in_progress, S.blocked, S.backlog, S.cancelled},
     S.in_progress: {S.blocked, S.in_review, S.failed, S.cancelled},
     S.blocked: {S.ready, S.in_progress, S.failed, S.cancelled},
-    S.in_review: {S.in_progress, S.waiting_approval, S.completed, S.cancelled},
+    S.in_review: {S.in_progress, S.waiting_approval, S.completed, S.blocked, S.cancelled},
     S.waiting_approval: {S.completed, S.in_progress, S.cancelled},
     S.failed: {S.ready, S.cancelled},
     S.completed: set(),
