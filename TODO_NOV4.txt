@@ -1,0 +1,185 @@
+TEAMPILOT AI — WHAT IS PENDING AND EXACTLY WHAT TO DO
+=====================================================
+Written 2026-10-31. Everything in the app that could be built before the
+hackathon is built, tested (22 backend tests) and committed. The items below
+are pending ONLY because the hackathon rule says the Switch setup and the
+agent workflow must be created during Nov 4–7. Do them in order; each step
+has a check so you know it worked.
+
+Time estimate for Part A: ~90 minutes on Nov 4 morning.
+
+Reference docs in this repo:
+  docs/SWITCH_INTEGRATION.md  verified Switch facts + protocol
+  docs/PROTOCOL.md            the card contract (becomes the room instructions)
+  docs/DEMO_SCRIPT.md         the 2–3 minute video plan
+  README.md                   run commands
+
+
+PART A — NOV 4: CONNECT TEAMPILOT TO A REAL SWITCH ROOM
+-------------------------------------------------------
+
+A0. Before anything (can be done today, not Switch setup)
+  [ ] Install Node 20+ and Python 3.11+ (both already on this Mac).
+  [ ] Make sure Claude Code is installed and logged in (`claude --version`).
+  [ ] Create a private Discord server with a channel named #teampilot.
+      Alternative with zero external setup: Docker Desktop installed so
+      Switch Console can run its bundled Mattermost.
+  [ ] Push this repo to GitHub (public) and create a second small public
+      repo "teampilot-demo-app" containing the two files from demo-repo/.
+      (The agents will clone and fix THAT repo during the demo.)
+
+A1. Switch Console + server (~15 min)
+  [ ] Download Switch Console (macOS) from
+      https://github.com/sandbox-quantum/switch/releases
+  [ ] Open it -> "Add a server" -> "Run a server on this computer".
+  [ ] Connect the messaging app: Home -> Messaging apps -> Discord
+      (follow docs.switchagents.ai/switch-rooms/deploy/messaging-apps/discord)
+      or accept the bundled Mattermost.
+  [ ] Home -> Messaging apps -> Link YOUR account (otherwise your own agents
+      refuse you).
+  CHECK: the sidebar shows "Running locally"; your account shows as linked.
+
+A2. Register the four specialist agents (~20 min)
+  For each role in: frontend, backend, testing, reviewer
+  [ ] Your Agents -> "+" ->
+        Name:          teampilot-<role>          (exactly this: the backend
+                                                  seeds agents with these names)
+        Description:   one line
+        Instructions:  write agents/<role>.md NOW (hackathon window) and paste
+                       it. It must contain:
+                         - the role's job (see table in docs/ARCHITECTURE.md §2)
+                         - "Load docs/PROTOCOL.md rules": reply with ONE readable
+                           line + a fenced ```json card; task_id copied from the
+                           TASK_ASSIGNED card; never write @name in text
+                         - never claim a test passed without pasting real output
+                         - work on branch teampilot/<role>/<task_id>; never merge
+                         - send BLOCKER when stuck; TASK_COMPLETED only with
+                           evidence
+                         - for testing: run `python3 -m pytest -q` in the demo
+                           repo and paste the tail into TEST_RESULT.log_excerpt
+                         - for reviewer: read the diff, answer with
+                           REVIEW_FEEDBACK approved true/false + findings[]
+        Run location:  This computer
+        Directory:     an EMPTY folder per agent, e.g. ~/agents/teampilot-<role>
+                       (the agent clones the demo repo into it on first task)
+        Provider:      Claude Code
+        Who can talk:  "Anyone"  (teammates + the coordinator must address it)
+        Auto mode:     on (default). Bypass permissions: OFF.
+  [ ] Commit agents/*.md to this repo (they are the agent workflow).
+  CHECK: 4 cards under Your Agents reading "Claude Code · this computer".
+
+A3. Register the coordinator identity (~5 min)
+  The coordinator is the TeamPilot backend itself; it speaks the Switch agent
+  protocol directly, so it needs an agent identity but NO Console session.
+  [ ] Your Agents -> "+" ->
+        Name: teampilot-coordinator   Provider: Claude Code (any; unused)
+        Directory: /Users/ayush/Desktop/swtichhack/backend
+        Who can talk: Anyone.   Instructions: "Managed by the TeamPilot
+        backend; do not start a session for this agent."
+  [ ] Console writes credentials to
+        backend/.switch/agents/teampilot-coordinator.json
+      Open it and copy the three values into backend/.env:
+        SWITCH_API_ENDPOINT=...
+        SWITCH_API_TOKEN=...
+        SWITCH_AGENT_ID=...
+      (.switch/ and .env are git-ignored. Never commit them.)
+  [ ] Do NOT let Console start a session for this agent. If it does (someone
+      @mentions it before the backend is up), stop that session in Console;
+      the backend's connection takes the room over anyway (protocol:
+      connect_to_room always takes over).
+
+A4. Create the room (~10 min)
+  [ ] Your Rooms -> Create room ->
+        Messaging app: Discord (or Mattermost)
+        Name: teampilot
+        Agents: all five teampilot-* agents
+        Instructions: paste the full text of docs/PROTOCOL.md, plus the line:
+          "The coordinator is teampilot-coordinator. Humans start work by
+           addressing it. Specialists only act on TASK_ASSIGNED cards and on
+           targeted messages; reply in the same thread."
+  [ ] In the channel run:  !list-agents   -> all five listed.
+  [ ] Set short aliases (optional, nicer on a phone):
+        !set-alias @teampilot-coordinator @pilot
+        !set-alias @teampilot-backend @backend   (etc.)
+  [ ] Find the room id: Console -> the room's page/URL, or ask any agent
+      "@teampilot-backend what is this room's id?" (connect_to_room returns it).
+      Put it in backend/.env:  SWITCH_ROOM_ID=...
+      Optionally SWITCH_PROJECT_ID=1 (default = first project).
+  CHECK: `!agents-status` shows the four specialists (⚪ until first mention).
+
+A5. Start TeamPilot against the room (~5 min)
+  [ ] cd backend && .venv/bin/python -m uvicorn app.main:app --port 8000
+      Log must say: "Switch adapter starting (agent ..., room ...)".
+  [ ] curl localhost:8000/api/switch/status  -> {"state": "connected", ...}
+      If "error": read last_error. Common causes:
+        - wrong SWITCH_API_ENDPOINT (it is the agent-bridge API URL, not the
+          Gateway URL; GET <endpoint>/health must return 200)
+        - room id wrong -> 403 on stream open
+  [ ] cd frontend && npm run dev  -> the sidebar pill reads "Switch: connected".
+
+A6. First real round-trip (~15 min) — this is the moment Switch is proven
+  [ ] From your phone, in #teampilot:
+        @teampilot-coordinator Investigate the login validation bug in
+        <demo repo url>, fix it, and verify the solution.
+  [ ] Expected within seconds:
+        - dashboard /tasks shows the task graph
+        - the coordinator posts the plan + a TASK_ASSIGNED card addressed to
+          teampilot-backend  (message badge in /chat = "switch", not "local")
+        - Switch Console starts a Claude Code session for teampilot-backend
+        - the agent answers in the room with TASK_STARTED (a real card)
+  [ ] If the agent answers in prose without a JSON card: tighten agents/<role>.md
+      ("ALWAYS end your message with exactly one ```json card"). Invalid cards
+      are stored as chat and ignored by design — check /chat to see them.
+  [ ] If nothing answers: `!agents-status`; ⚪ means Console is not running or
+      the agent's directory/provider is wrong. The room reply also prints the
+      exact command to start the session by hand.
+  [ ] Permission prompts from Claude Code appear in the room: answer them there.
+  CHECK: /activity shows events whose actor is teampilot-backend, and the
+  Agents page shows it "working".
+
+A7. Harden for the demo (Nov 5)
+  [ ] Run the whole scenario 3 times end to end. Watch for: agents answering
+      each other without going through the coordinator (loop), missed
+      mentions (silence), stalls (the 20-min sweep catches these; for rehearsal
+      set STALE_TASK_MINUTES=5 in .env).
+  [ ] Optional: set ANTHROPIC_API_KEY in backend/.env so decomposition uses
+      Claude (claude-opus-5-5, structured outputs) instead of the rule planner.
+      The activity log records which planner ran ("decomposition_source").
+  [ ] Optional: set TEAMPILOT_API_TOKEN and send it as
+      "Authorization: Bearer ..." from the dashboard (add to lib/api.ts post()).
+
+
+PART B — NOV 6–7: RECORD AND SUBMIT
+-----------------------------------
+  [ ] Record docs/DEMO_SCRIPT.md (phone + laptop). Keep a backup take.
+  [ ] Screenshots of the dashboard into docs/screenshots/ (README links).
+  [ ] README: fill in team members; confirm the "How Switch is used" section
+      matches what you actually ran; keep the limitations list honest.
+  [ ] Submit by Nov 7, 20:00 IST (deadline 23:59 IST; keep the buffer).
+  [ ] Optional side tracks: blog post (Best Blog), #HowISwitch post.
+
+
+KNOWN LIMITATIONS TO STATE IN THE SUBMISSION
+--------------------------------------------
+  - One Switch room drives one TeamPilot project (SWITCH_PROJECT_ID).
+  - Agent presence in the dashboard is inferred from cards + a 10-minute
+    silence rule; `!agents-status` in the room is the ground truth.
+  - Dashboard auth is a single optional bearer token.
+  - Switch's own task API is "present but not ready" per its docs, so
+    coordination uses room messages + TeamPilot's DB, not Switch tasks.
+  - All agents run from one machine's Switch Console (a Console-run server is
+    single-owner); teammates participate from Discord on any device.
+
+
+WHAT WAS FIXED IN THIS PASS (already done, for the record)
+----------------------------------------------------------
+  - Pre-migration databases are auto-stamped and upgraded (no manual delete);
+    covered by tests/test_migrate.py.
+  - SWITCH_PROJECT_ID selects which project the room drives.
+  - Timestamps are now serialized as UTC with "Z" (SQLite dropped the offset,
+    so browsers showed times shifted by the local offset).
+  - Visual check of all six dashboard pages via Chrome DevTools Protocol
+    (docs/screenshots/); every page hydrates and renders live data.
+  - /debug page (not in the sidebar) fetches every endpoint from the browser
+    and prints status/size/error — open it first if the dashboard looks empty.
+  - 22 backend tests pass; frontend eslint + tsc clean.

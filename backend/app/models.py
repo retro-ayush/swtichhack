@@ -4,6 +4,7 @@ import enum
 from datetime import datetime, timezone
 
 from sqlalchemy import JSON, DateTime, ForeignKey, Index, String, Text
+from sqlalchemy.types import TypeDecorator
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .db import Base
@@ -11,6 +12,24 @@ from .db import Base
 
 def utcnow() -> datetime:
     return datetime.now(timezone.utc)
+
+
+class TZDateTime(TypeDecorator):
+    """Timezone-aware UTC datetimes on every backend. SQLite drops the offset,
+    so values come back naive; this re-attaches UTC so JSON carries +00:00
+    and browsers parse the instant correctly instead of as local time."""
+    impl = DateTime(timezone=True)
+    cache_ok = True
+
+    def process_bind_param(self, value, dialect):
+        if value is not None and value.tzinfo is not None:
+            value = value.astimezone(timezone.utc)
+        return value
+
+    def process_result_value(self, value, dialect):
+        if value is not None and value.tzinfo is None:
+            value = value.replace(tzinfo=timezone.utc)
+        return value
 
 
 class TaskStatus(str, enum.Enum):
@@ -45,7 +64,7 @@ class User(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     display_name: Mapped[str] = mapped_column(String(120))
     role: Mapped[str] = mapped_column(String(40), default="member")
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(TZDateTime, default=utcnow)
 
 
 class Project(Base):
@@ -56,7 +75,7 @@ class Project(Base):
     repository_url: Mapped[str] = mapped_column(String(500), default="")
     status: Mapped[str] = mapped_column(String(40), default="active")
     is_demo: Mapped[bool] = mapped_column(default=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(TZDateTime, default=utcnow)
 
     agents: Mapped[list["Agent"]] = relationship(back_populates="project")
     tasks: Mapped[list["Task"]] = relationship(back_populates="project")
@@ -71,7 +90,7 @@ class Agent(Base):
     runtime_type: Mapped[str] = mapped_column(String(40), default="switch_console")
     status: Mapped[str] = mapped_column(String(20), default=AgentStatus.offline.value)
     configuration: Mapped[dict] = mapped_column(JSON, default=dict)
-    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_seen_at: Mapped[datetime | None] = mapped_column(TZDateTime, nullable=True)
 
     project: Mapped["Project"] = relationship(back_populates="agents")
 
@@ -90,8 +109,8 @@ class Task(Base):
     attempts: Mapped[int] = mapped_column(default=0)
     agent_message_count: Mapped[int] = mapped_column(default=0)
     created_by: Mapped[str] = mapped_column(String(120), default="")
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+    created_at: Mapped[datetime] = mapped_column(TZDateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(TZDateTime, default=utcnow, onupdate=utcnow)
     completion_summary: Mapped[str] = mapped_column(Text, default="")
 
     project: Mapped["Project"] = relationship(back_populates="tasks")
@@ -123,7 +142,7 @@ class Message(Base):
     delivered_via: Mapped[str] = mapped_column(String(20), default="local")  # switch|local|pending
     switch_message_id: Mapped[str] = mapped_column(String(200), default="")
     thread_id: Mapped[str] = mapped_column(String(200), default="")
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+    created_at: Mapped[datetime] = mapped_column(TZDateTime, default=utcnow, index=True)
 
 
 class TaskEvent(Base):
@@ -133,7 +152,7 @@ class TaskEvent(Base):
     event_type: Mapped[str] = mapped_column(String(60))
     actor: Mapped[str] = mapped_column(String(200), default="system")
     event_data: Mapped[dict] = mapped_column(JSON, default=dict)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+    created_at: Mapped[datetime] = mapped_column(TZDateTime, default=utcnow, index=True)
 
 
 class Approval(Base):
@@ -144,8 +163,8 @@ class Approval(Base):
     approved_by: Mapped[str] = mapped_column(String(200), default="")
     status: Mapped[str] = mapped_column(String(20), default=ApprovalStatus.pending.value)
     decision_reason: Mapped[str] = mapped_column(Text, default="")
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
-    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(TZDateTime, default=utcnow)
+    decided_at: Mapped[datetime | None] = mapped_column(TZDateTime, nullable=True)
 
 
 class ExecutionRun(Base):
@@ -154,8 +173,8 @@ class ExecutionRun(Base):
     task_id: Mapped[int] = mapped_column(ForeignKey("tasks.id"), index=True)
     agent_id: Mapped[int | None] = mapped_column(ForeignKey("agents.id"), nullable=True)
     status: Mapped[str] = mapped_column(String(20))  # passed|failed|error|running
-    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
-    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    started_at: Mapped[datetime] = mapped_column(TZDateTime, default=utcnow)
+    finished_at: Mapped[datetime | None] = mapped_column(TZDateTime, nullable=True)
     output_summary: Mapped[str] = mapped_column(Text, default="")
     error_summary: Mapped[str] = mapped_column(Text, default="")
 

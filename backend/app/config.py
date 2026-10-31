@@ -21,6 +21,8 @@ class Settings:
     switch_token: str = field(default_factory=lambda: _env("SWITCH_API_TOKEN"))
     switch_agent_id: str = field(default_factory=lambda: _env("SWITCH_AGENT_ID"))
     switch_room_id: str = field(default_factory=lambda: _env("SWITCH_ROOM_ID"))
+    # Which TeamPilot project the Switch room drives (default: the first one).
+    switch_project_id: int = field(default_factory=lambda: int(_env("SWITCH_PROJECT_ID", "0") or 0))
     # LLM decomposition (optional; rule-based fallback without it).
     anthropic_model: str = field(default_factory=lambda: _env("ANTHROPIC_MODEL", "claude-opus-5-5"))
     # Optional bearer token protecting mutating routes.

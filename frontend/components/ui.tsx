@@ -96,7 +96,8 @@ export function Sidebar() {
           </Link>
         ))}
       </nav>
-      <div className="p-3"><SwitchPill /></div>
+      {/* extra bottom padding keeps the pill clear of Next's dev indicator */}
+      <div className="px-3 pb-12 pt-3"><SwitchPill /></div>
     </aside>
   );
 }

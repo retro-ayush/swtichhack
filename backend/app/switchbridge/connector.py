@@ -11,6 +11,7 @@ import re
 
 from sqlalchemy import select
 
+from ..config import settings
 from ..db import SessionLocal
 from ..engine import coordinator
 from ..models import Agent, Project
@@ -33,8 +34,13 @@ async def on_domain_event(evt: dict) -> None:
 def _process_message(payload: dict) -> None:
     db = SessionLocal()
     try:
-        project = db.execute(select(Project).order_by(Project.id)).scalars().first()
+        if settings.switch_project_id:
+            project = db.get(Project, settings.switch_project_id)
+        else:
+            project = db.execute(select(Project).order_by(Project.id)).scalars().first()
         if project is None:
+            log.warning("Switch message received but no project is bound (SWITCH_PROJECT_ID=%s)",
+                        settings.switch_project_id or "first")
             return
         sender_name = payload.get("sender_name") or payload.get("sender") or "unknown"
         body = payload.get("body") or ""

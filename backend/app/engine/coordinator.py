@@ -276,7 +276,9 @@ def handle_card(db: Session, project: Project, card: AgentCard, msg: Message) ->
                 _send_card(db, project.id, {
                     "type": "REVIEW_REQUEST", "from": COORDINATOR_NAME, "to": reviewer.name,
                     "task_id": task.key,
-                    "message": f"Review requested by {sender}. Ref: {getattr(card, 'diff_ref', '')}. {card.message}",
+                    "message": f"Review requested by {sender}. "
+                               + (f"Ref: {card.diff_ref}. " if getattr(card, "diff_ref", "") else "")
+                               + card.message,
                 }, to_agent=reviewer.name, human_line=f"👀 {task.key} ready for review ({reviewer.name})",
                    task_id=task.id, thread_id=msg.thread_id)
                 _touch_agent(db, project.id, reviewer.name, AgentStatus.reviewing)
