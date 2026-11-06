@@ -40,6 +40,41 @@ def test_stalled_task_is_blocked_and_escalated(db):
     assert db.get(Agent, agent.id).status == AgentStatus.offline.value
 
 
+def test_quiet_review_nudges_reviewer_then_still_escalates(db):
+    from sqlalchemy import select
+
+    from app.models import Message
+    p = Project(name="hk-nudge")
+    db.add(p)
+    db.flush()
+    owner = Agent(project_id=p.id, name="n-backend", role="backend")
+    reviewer = Agent(project_id=p.id, name="n-reviewer", role="reviewer")
+    db.add_all([owner, reviewer])
+    db.flush()
+    t = Task(project_id=p.id, title="fix", status=TaskStatus.in_review.value, assigned_agent_id=owner.id)
+    db.add(t)
+    db.flush()
+    t0 = datetime.now(timezone.utc)
+    db.add(TaskEvent(task_id=t.id, event_type="status:in_review", actor="n-backend", created_at=t0))
+    db.commit()
+
+    def nudges():
+        return db.execute(select(Message).where(Message.task_id == t.id,
+                                                Message.recipient_id == "n-reviewer")).scalars().all()
+
+    assert sweep(db, now=t0 + timedelta(minutes=2))["nudged"] == 0          # still fresh
+    assert sweep(db, now=t0 + timedelta(minutes=6))["nudged"] == 1          # quiet -> reviewer pinged
+    db.commit()
+    assert len(nudges()) == 1 and "waiting for your review" in nudges()[0].content
+    # The next sweep a minute later must not nudge again.
+    real_now = datetime.now(timezone.utc)
+    assert sweep(db, now=real_now + timedelta(minutes=1))["nudged"] == 0
+    # Nudges are not activity: after 20 quiet minutes the task still escalates.
+    assert sweep(db, now=t0 + timedelta(minutes=25))["stalled"] == 1
+    db.commit()
+    assert db.get(Task, t.id).status == TaskStatus.blocked.value
+
+
 def test_coordinator_marked_online(db):
     p = Project(name="hk2")
     db.add(p)

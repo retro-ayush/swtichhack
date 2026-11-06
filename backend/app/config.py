@@ -34,6 +34,8 @@ class Settings:
     # Time guards (housekeeping sweep): a task with no activity for this long
     # is blocked and escalated; an agent silent this long is shown offline.
     stale_task_minutes: int = field(default_factory=lambda: int(_env("STALE_TASK_MINUTES", "20")))
+    # A quiet active task first gets one nudge to the agent it waits on.
+    nudge_minutes: int = field(default_factory=lambda: int(_env("NUDGE_MINUTES", "5")))
     agent_offline_minutes: int = field(default_factory=lambda: int(_env("AGENT_OFFLINE_MINUTES", "10")))
 
     @property
