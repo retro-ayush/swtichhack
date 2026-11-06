@@ -77,7 +77,7 @@ short version:
    (Claude Code, "Anyone" may talk) and `teampilot-coordinator` (directory
    `backend/`, no session). Create a room with all five, and paste
    `agents/dist/room-instructions.txt` as its instructions.
-3. Run `python3 scripts/switch_env.py --room <ROOM_ID>`. It copies the
+3. Run `python3 scripts/switch_env.py --room-only <ROOM_ID>`. It copies the
    coordinator's credentials into `backend/.env`.
 4. Restart the backend. The sidebar shows **Switch: connected**.
 

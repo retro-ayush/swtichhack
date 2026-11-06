@@ -42,7 +42,14 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--json", type=Path, default=DEFAULT_JSON)
     ap.add_argument("--room", help="Switch room id to bind (SWITCH_ROOM_ID)")
+    ap.add_argument("--room-only", metavar="ROOM_ID",
+                    help="only set SWITCH_ROOM_ID (credentials came from register_coordinator.py)")
     args = ap.parse_args()
+
+    if args.room_only:
+        update_env(ENV, {"SWITCH_ROOM_ID": args.room_only})
+        print(f"updated {ENV.relative_to(ROOT)}: SWITCH_ROOM_ID={args.room_only}")
+        return 0
 
     if not args.json.exists():
         print(f"not found: {args.json}\nRegister teampilot-coordinator in Switch Console with directory "

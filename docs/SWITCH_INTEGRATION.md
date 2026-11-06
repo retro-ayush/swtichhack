@@ -80,7 +80,7 @@ The full checklist, with a check after each step, is in
    `python3 scripts/switch_env.py` copies its credentials into `backend/.env`.
 4. Create room `teampilot` with all five agents. Its instructions are
    `agents/dist/room-instructions.txt`.
-5. `python3 scripts/switch_env.py --room <ROOM_ID>`, then restart the backend.
+5. `python3 scripts/switch_env.py --room-only <ROOM_ID>`, then restart the backend.
    The dashboard shows **Switch: connected**.
 
 ## How the integration is verified without a live server

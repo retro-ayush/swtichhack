@@ -54,16 +54,21 @@ A2. Register the 4 specialists (~15 min). Repeat for role in
   CHECK: 4 cards reading "Claude Code · this computer".
 
 A3. Register the coordinator identity (~5 min)
-  [ ] Your Agents -> + :
-        Name teampilot-coordinator, Provider Claude Code (unused),
-        Directory = <this repo>/backend, Who can talk = Anyone,
-        Instructions = the quoted block in agents/coordinator.md
-  [ ] Never start a session for it. The TeamPilot backend is its client.
-  [ ] Run:  python3 scripts/switch_env.py
-      CHECK: it prints "updated backend/.env: SWITCH_API_ENDPOINT=..., SWITCH_API_TOKEN=***"
-      If it says "not found", Console put the file elsewhere: find it with
-        find ~ -path '*/.switch/agents/teampilot-coordinator.json' 2>/dev/null
-      then re-run with --json <that path>.
+  Do NOT create teampilot-coordinator in Switch Console's agent form. Current
+  Console builds run those agents through their controller and never hand
+  out credentials, so the TeamPilot backend could not act as that agent.
+  (If you already created one there, delete it first.)
+  [ ] Open the Switch Gateway: http://localhost:<gateway port>
+      (the port is in ~/Library/Application Support/switchdash/local-switch-server/ports.json,
+      "gateway"; it was 61061 on our Mac). Sign in as admin@switch.local; the
+      password is the GATEWAY_ADMIN_PASSWORD line in
+      ~/Library/Application Support/switchdash/local-switch-server/native/run/switch-core.env
+  [ ] Gateway -> API keys -> create a key labelled "teampilot". Copy it.
+  [ ] Run:  python3 scripts/register_coordinator.py   and paste the key (input hidden)
+      CHECK: "Registered teampilot-coordinator (agent id ...)" and
+      "Updated backend/.env: ... SWITCH_API_TOKEN=*** ..."
+  [ ] In Switch Console, set teampilot-coordinator's "Who can talk" to Anyone.
+      If Console doesn't list it, use the Gateway's agent page.
 
 A4. Create the room (~10 min)
   [ ] Your Rooms -> Create room: messaging app Discord, name "teampilot",
@@ -73,7 +78,7 @@ A4. Create the room (~10 min)
       what creates the room.
   [ ] In the channel:  !list-agents        -> all five listed
   [ ] Get the room id from the room's page in Switch Console, then:
-        python3 scripts/switch_env.py --room <ROOM_ID>
+        python3 scripts/switch_env.py --room-only <ROOM_ID>
   CHECK: !agents-status lists the specialists (⚪ is normal before first use).
 
 A5. Start TeamPilot against the room (~5 min)
