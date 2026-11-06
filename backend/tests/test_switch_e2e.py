@@ -228,6 +228,23 @@ def test_reconnects_with_same_connection_id_and_cursor():
         server.should_exit = True
 
 
+def test_room_takeover_is_reported_not_hidden():
+    from app.switchbridge.adapter import SwitchAdapter
+
+    a = SwitchAdapter("http://127.0.0.1:1", TOKEN, AGENT_ID, ROOM)
+    a.state = "connected"
+    frame = {"event": "room_released", "data": [json.dumps({"room_id": ROOM, "session_id": None})]}
+    asyncio.run(a._dispatch(frame))
+    assert a.state == "room_lost" and "restart" in a.last_error
+    from app.switchbridge import adapter as switch
+    switch._adapter = a
+    try:
+        assert switch.deliver("x") == "local"  # never claims delivery without the room
+    finally:
+        switch._adapter = None
+        asyncio.run(a._client.aclose())
+
+
 def test_deliver_is_local_when_disconnected():
     from app.switchbridge import adapter as switch
     switch._adapter = None

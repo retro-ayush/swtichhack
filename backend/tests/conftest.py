@@ -6,9 +6,12 @@ _dbfile = os.path.join(tempfile.mkdtemp(prefix="teampilot-test-"), "test.db")
 os.environ["DATABASE_URL"] = f"sqlite:///{_dbfile}"
 os.environ["ANTHROPIC_API_KEY"] = ""  # force rule-based decomposition
 os.environ["TEAMPILOT_API_TOKEN"] = ""  # no auth in tests
-os.environ.pop("SWITCH_API_ENDPOINT", None)
-os.environ.pop("SWITCH_API_TOKEN", None)
-os.environ.pop("SWITCH_AGENT_ID", None)
+# Set to empty, not popped: app.config calls load_dotenv(), which fills any
+# *missing* variable from backend/.env. Real Switch credentials in .env must
+# never reach a test run (it would join the real room as the coordinator).
+for _var in ("SWITCH_API_ENDPOINT", "SWITCH_API_TOKEN", "SWITCH_AGENT_ID", "SWITCH_ROOM_ID",
+             "SWITCH_PROJECT_ID", "ANTHROPIC_API_KEY", "TEAMPILOT_API_TOKEN"):
+    os.environ[_var] = ""
 
 import pytest
 from fastapi.testclient import TestClient

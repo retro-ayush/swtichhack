@@ -56,6 +56,12 @@ def sweep(db: Session, now: datetime | None = None) -> dict[str, int]:
         }, to_agent=None, human_line=f"⏱️ {t.key} stalled ({owner}); blocked pending human action.",
            task_id=t.id)
 
+    # Safety net: (re)send assignments for ready tasks that never reached the
+    # room (missed dispatch, backend restart, adapter reconnecting).
+    dispatched = 0
+    for p in db.execute(select(Project)).scalars().all():
+        dispatched += coordinator.dispatch_ready_tasks(db, p)
+
     for a in db.execute(select(Agent).where(
         Agent.status != AgentStatus.offline.value, Agent.role != "coordinator",
     )).scalars().all():
@@ -65,7 +71,7 @@ def sweep(db: Session, now: datetime | None = None) -> dict[str, int]:
             offline += 1
             coordinator.events.publish({"kind": "agent", "project_id": a.project_id,
                                         "name": a.name, "status": a.status})
-    return {"stalled": stalled, "offline": offline}
+    return {"stalled": stalled, "offline": offline, "dispatched": dispatched}
 
 
 def run_sweep() -> dict[str, int]:
@@ -79,7 +85,7 @@ def run_sweep() -> dict[str, int]:
     except Exception:
         db.rollback()
         log.exception("housekeeping sweep failed")
-        return {"stalled": 0, "offline": 0}
+        return {"stalled": 0, "offline": 0, "dispatched": 0}
     finally:
         db.close()
 

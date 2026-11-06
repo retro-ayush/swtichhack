@@ -70,6 +70,13 @@ def test_full_workflow(client):
          **{"from": "teampilot-reviewer"}, task_id=inv["key"], approved=True)
     assert get_tasks(client, pid)[inv["key"]]["status"] == "completed"
 
+    # Regression (found live on Switch): completing a task must not just
+    # unlock its dependent, it must also ASSIGN it, or the chain stalls.
+    unlocked = next(t for t in get_tasks(client, pid).values() if t["status"] == "ready" and t["kind"] == "feature")
+    msgs = client.get(f"/api/projects/{pid}/messages").json()
+    assert any(m["message_type"] == "TASK_ASSIGNED" and m["task_id"] == unlocked["id"] for m in msgs), \
+        f"{unlocked['key']} became ready but was never assigned"
+
     # 4. Implementation tasks unlock in dependency order; reject-then-approve loop.
     tasks = get_tasks(client, pid)
     be = next(t for t in tasks.values() if t["kind"] == "feature" and t["status"] == "ready")

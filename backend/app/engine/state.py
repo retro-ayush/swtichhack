@@ -121,3 +121,6 @@ def _promote_dependents(db: Session, completed_task: Task, actor: str) -> None:
         if not unmet_dependencies(db, t):
             t.status = S.ready.value
             record_event(db, t, "status:ready", actor, {"unlocked_by": completed_task.key})
+    # autoflush is off: callers query for ready tasks right after this
+    # (dispatch_ready_tasks) and must see the promotions.
+    db.flush()

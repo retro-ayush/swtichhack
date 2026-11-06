@@ -185,17 +185,24 @@ def handle_user_request(db: Session, project: Project, text: str, requested_by: 
 
 
 def dispatch_ready_tasks(db: Session, project: Project) -> int:
-    """Send TASK_ASSIGNED for every ready, assigned, not-yet-dispatched task."""
+    """Send TASK_ASSIGNED for every ready, assigned, not-yet-dispatched task.
+
+    Idempotent, so the housekeeping sweep calls it too. While Switch is
+    configured, only a Switch-delivered assignment counts as dispatched: one
+    recorded "local" (the adapter was reconnecting) is sent again."""
+    db.flush()
     ready = db.execute(
         select(Task).where(Task.project_id == project.id, Task.status == TaskStatus.ready.value)
     ).scalars().all()
+    must_reach_switch = switch.get_adapter() is not None
     sent = 0
     for t in ready:
         if not t.assigned_agent:
             continue
-        already = db.execute(
-            select(Message.id).where(Message.task_id == t.id, Message.message_type == "TASK_ASSIGNED").limit(1)
-        ).scalar()
+        q = select(Message.id).where(Message.task_id == t.id, Message.message_type == "TASK_ASSIGNED")
+        if must_reach_switch:
+            q = q.where(Message.delivered_via == "switch")
+        already = db.execute(q.limit(1)).scalar()
         if already:
             continue
         card = {

@@ -135,6 +135,20 @@ class SwitchAdapter:
             return
         if name == "evicted":
             raise ConnectionError(f"evicted: {data.get('reason')}")
+        if self.room_id and (
+            (name == "room_released" and data.get("room_id") == self.room_id)
+            or (name == "subscription_changed" and self.room_id not in (data.get("rooms") or []))
+        ):
+            # Another connection of this agent claimed our room (protocol:
+            # connect_to_room / rooms= always take over). We no longer receive
+            # its events, so say so instead of reporting "connected". Not
+            # reclaimed automatically: two clients doing that would evict each
+            # other forever. Restarting this backend reclaims it.
+            self.state = "room_lost"
+            self.last_error = (f"room {self.room_id} was claimed by another connection of this agent "
+                               f"({name}); restart the backend to reclaim it")
+            log.error(self.last_error)
+            return
         if name in ("gap", "subscription_changed", "room_released"):
             log.info("control frame %s: %s", name, data)
             return
