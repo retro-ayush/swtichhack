@@ -43,6 +43,37 @@ def extract_card(body: str) -> AgentCard | None:
         return None
 
 
+def card_error(body: str) -> str | None:
+    """Why a message that *tried* to carry a card (has a ```json fence) is
+    invalid, in one line an agent can act on. None when there is no card
+    attempt or the card is valid."""
+    m = _FENCE.search(body)
+    if not m:
+        return None
+    try:
+        _card_adapter.validate_python(json.loads(m.group(1)))
+        return None
+    except json.JSONDecodeError as e:
+        return f"card is not valid JSON ({e.msg} at char {e.pos})"
+    except ValidationError as e:
+        parts = []
+        for err in e.errors()[:4]:
+            loc = ".".join(str(x) for x in err["loc"] if not str(x).endswith("Card"))
+            parts.append(f"{loc or 'card'}: {err['msg']}")
+        return "card rejected: " + "; ".join(parts)
+
+
+def reject_invalid_card(db: Session, project_id: int, sender: str, error: str, thread_id: str = "") -> None:
+    """Tell the agent its card was ignored and why (bounded by the per-task
+    message budget the agent's retries count against)."""
+    text = (f"⚠️ Your last message was not applied: {error}. Resend it with exactly one ```json card "
+            "using only the documented fields (see the room instructions).")
+    via = switch.deliver(text, target=sender, thread_id=thread_id or None)
+    _persist_message(db, project_id, sender_type="coordinator", sender_name=COORDINATOR_NAME,
+                     content=text, message_type="CARD_REJECTED", delivered_via=via,
+                     recipient=sender, thread_id=thread_id)
+
+
 def _persist_message(
     db: Session, project_id: int, *, sender_type: str, sender_name: str,
     content: str, message_type: str = "CHAT", task_id: int | None = None,
@@ -76,6 +107,13 @@ def _send_card(db: Session, project_id: int, card: dict, *, to_agent: str | None
         content=body, message_type=card.get("type", "CHAT"), task_id=task_id,
         structured=card, delivered_via=via, recipient=to_agent or "", thread_id=thread_id,
     )
+
+
+def reply(db: Session, project_id: int, text: str, thread_id: str = "") -> Message:
+    """Plain coordinator reply (command results, help) into the room."""
+    via = switch.deliver(text, target=None, thread_id=thread_id or None)
+    return _persist_message(db, project_id, sender_type="coordinator", sender_name=COORDINATOR_NAME,
+                            content=text, message_type="CHAT", delivered_via=via, thread_id=thread_id)
 
 
 # ----------------------------------------------------------------- assignment

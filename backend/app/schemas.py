@@ -159,8 +159,8 @@ class TaskPatch(BaseModel):
 
 
 class ChatIn(BaseModel):
-    content: str = Field(min_length=1)
-    sender_name: str = "human"
+    content: str = Field(min_length=1, max_length=20_000)
+    sender_name: str = Field(default="human", min_length=1, max_length=120)
     as_request: bool = False  # True = ask the coordinator to decompose into tasks
 
 

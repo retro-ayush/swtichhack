@@ -1,4 +1,28 @@
-from app.engine.coordinator import extract_card
+from app.engine.coordinator import card_error, extract_card
+
+
+def test_card_error_explains_rejection():
+    assert card_error("no card here") is None
+    ok = '```json\n{"type": "TASK_STARTED", "from": "a", "task_id": "T-1"}\n```'
+    assert card_error(ok) is None
+    bad_json = '```json\n{"type": "TASK_STARTED", "from": "a",}\n```'
+    assert "not valid JSON" in card_error(bad_json)
+    extra = '```json\n{"type": "TASK_STARTED", "from": "a", "eta": "5m"}\n```'
+    err = card_error(extra)
+    assert "eta" in err and "card rejected" in err
+    missing = '```json\n{"type": "TEST_RESULT", "from": "a", "task_id": "T-1"}\n```'
+    assert "passed" in card_error(missing)
+
+
+def test_invalid_card_gets_a_reply(client):
+    pid = client.get("/api/projects").json()[0]["id"]
+    r = client.post(f"/api/projects/{pid}/agent-message", json={
+        "sender_name": "teampilot-testing",
+        "content": '```json\n{"type": "TEST_RESULT", "from": "teampilot-testing", "task_id": "T-1"}\n```'})
+    assert r.status_code == 200
+    assert r.json()["card_recognized"] is False and "passed" in r.json()["card_error"]
+    msgs = client.get(f"/api/projects/{pid}/messages").json()
+    assert msgs[-1]["message_type"] == "CARD_REJECTED"
 
 
 def test_fenced_card_parsed():

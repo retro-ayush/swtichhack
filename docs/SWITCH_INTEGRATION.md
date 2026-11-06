@@ -64,20 +64,43 @@ at `docs/official/internals/agent-protocol.md` in the repo).
 5. **Formatting:** Discord/Slack render no Markdown tables → cards are
    line-based. [switch-skill "Formatting"]
 
-## Nov-4 provisioning (done during the hackathon, ~30 min)
+## Provisioning
 
-1. Install Switch Console (macOS) → local server → connect Discord/Mattermost
-   → link account. [getting-started/*]
-2. Register 4 agents (frontend/backend/testing/reviewer) as Claude Code
-   agents, instructions from `agents/<role>.md`, addressing **anyone**,
-   auto-mode on.
-3. Register `teampilot-coordinator` as an agent **without** a Console session
-   (TeamPilot's backend is its "session" via the protocol). Copy the env vars
-   from `.switch/agents/teampilot-coordinator.json` into `backend/.env`.
-4. Create room `#teampilot` with all five agents + the team; room
-   instructions = the card protocol (generated from `docs/PROTOCOL.md`).
-5. Set `SWITCH_ROOM_ID`, restart the backend → the dashboard header shows
-   **Switch: connected**.
+The full checklist, with a check after each step, is in
+[TODO_NOV4.txt](../TODO_NOV4.txt), part A. In short:
+
+1. Install Switch Console (macOS) → local server → connect Discord or
+   Mattermost → link your account. [getting-started/*]
+2. `python3 scripts/build_agent_prompts.py <demo-repo-url>`, then register
+   `teampilot-frontend|backend|testing|reviewer` as Claude Code agents using
+   `agents/dist/teampilot-<role>.txt`, with addressing **Anyone** and auto
+   mode on.
+3. Register `teampilot-coordinator` **without** a Console session. The
+   TeamPilot backend is its client over the protocol. Then
+   `python3 scripts/switch_env.py` copies its credentials into `backend/.env`.
+4. Create room `teampilot` with all five agents. Its instructions are
+   `agents/dist/room-instructions.txt`.
+5. `python3 scripts/switch_env.py --room <ROOM_ID>`, then restart the backend.
+   The dashboard shows **Switch: connected**.
+
+## How the integration is verified without a live server
+
+`backend/tests/test_switch_e2e.py` starts a fake agent bridge that implements
+the endpoints above, then runs the real adapter and connector against it over
+HTTP. It asserts:
+
+- the stream opens with `connection_id`, `filter=all` and `rooms=<id>`
+- a heartbeat runs and `connect_to_room` is called
+- a human @mention becomes tasks, and the coordinator answers with
+  `send_targeted_message` (TASK_ASSIGNED to the right agent) and
+  `post_message`, recorded as `delivered_via=switch`
+- an agent's card from the room changes task state
+- a chat command (`status`) is answered in the room
+- after a dropped socket it reconnects with the same `connection_id` and
+  `Last-Event-ID`
+
+This proves the client matches the documented protocol. It cannot prove the
+real server behaves as documented; step A6 of the checklist does that.
 
 ## Honesty contract
 

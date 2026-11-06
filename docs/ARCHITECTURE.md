@@ -92,13 +92,14 @@ executed.
 
 ```
 backend/app/{config,db,models,schemas,events,main,seed,migrate}.py
-backend/app/engine/{graph,state,decompose,coordinator,housekeeping}.py
+backend/app/engine/{graph,state,decompose,coordinator,commands,housekeeping}.py
 backend/alembic/           # migrations (upgraded to head on startup)
 backend/app/switchbridge/{adapter,connector}.py
 backend/app/routers/api.py
 backend/tests/
 frontend/app/{page,chat,tasks,agents,approvals,activity}/…
-agents/            # created Nov 4+ (hackathon rule)
+agents/            # role instructions (built into agents/dist/ by scripts/)
+scripts/           # build_agent_prompts.py, switch_env.py
 docs/
 ```
 

@@ -1,7 +1,5 @@
 import type { NextConfig } from "next";
 
-const BACKEND = process.env.BACKEND_URL ?? "http://localhost:8000";
-
 const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
@@ -13,9 +11,8 @@ const nextConfig: NextConfig = {
       },
     },
   },
-  async rewrites() {
-    return [{ source: "/api/:path*", destination: `${BACKEND}/api/:path*` }];
-  },
+  // /api/* is served by app/api/[...path]/route.ts (server-side proxy that
+  // injects TEAMPILOT_API_TOKEN); no rewrite needed.
 };
 
 export default nextConfig;

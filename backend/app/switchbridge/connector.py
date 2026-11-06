@@ -13,7 +13,7 @@ from sqlalchemy import select
 
 from ..config import settings
 from ..db import SessionLocal
-from ..engine import coordinator
+from ..engine import commands, coordinator
 from ..models import Agent, Project
 
 log = logging.getLogger(__name__)
@@ -60,10 +60,16 @@ def _process_message(payload: dict) -> None:
         )
         if card is not None:
             coordinator.handle_card(db, project, card, msg)
+        elif sender_type == "agent" and (err := coordinator.card_error(body)):
+            coordinator.reject_invalid_card(db, project.id, sender_name, err, msg.thread_id)
         elif sender_type == "human" and payload.get("addressed"):
             text = _MENTION.sub("", body).strip()
             if text:
-                coordinator.handle_user_request(db, project, text, sender_name)
+                result = commands.execute(db, project, text, sender_name)
+                if result is not None:
+                    coordinator.reply(db, project.id, result.reply, thread_id=msg.thread_id)
+                else:
+                    coordinator.handle_user_request(db, project, text, sender_name)
         db.commit()
     except Exception:
         db.rollback()

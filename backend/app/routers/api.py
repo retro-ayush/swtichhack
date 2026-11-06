@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import hmac
 
 from fastapi import APIRouter, Depends, Header, HTTPException
 from fastapi.responses import StreamingResponse
@@ -10,7 +11,7 @@ from sqlalchemy.orm import Session
 from .. import events
 from ..config import settings
 from ..db import get_db
-from ..engine import coordinator
+from ..engine import commands, coordinator
 from ..engine.state import TransitionError, record_event, transition
 from ..models import (
     Agent, AgentStatus, Approval, ApprovalStatus, ExecutionRun, Message, Project,
@@ -22,13 +23,16 @@ from ..schemas import (
 )
 from ..switchbridge import adapter as switch
 
-router = APIRouter(prefix="/api")
-
-
 def require_token(authorization: str = Header(default="")) -> None:
-    """Mutating routes are protected when TEAMPILOT_API_TOKEN is set."""
-    if settings.api_token and authorization != f"Bearer {settings.api_token}":
+    """When TEAMPILOT_API_TOKEN is set, every /api route needs it. The
+    dashboard's server-side proxy adds it; browsers never see it."""
+    if settings.api_token and not hmac.compare_digest(
+        authorization.encode(), f"Bearer {settings.api_token}".encode()
+    ):
         raise HTTPException(401, "missing or invalid bearer token")
+
+
+router = APIRouter(prefix="/api", dependencies=[Depends(require_token)])
 
 
 def _project(db: Session, project_id: int) -> Project:
@@ -175,7 +179,10 @@ def chat(project_id: int, body: ChatIn, db: Session = Depends(get_db)):
         content=body.content, delivered_via=via,
     )
     created: list[Task] = []
-    if body.as_request:
+    result = commands.execute(db, p, body.content, body.sender_name)
+    if result is not None:
+        coordinator.reply(db, p.id, result.reply)
+    elif body.as_request:
         created = coordinator.handle_user_request(db, p, body.content, body.sender_name)
     db.commit()
     return [_task_out(db, t) for t in created]
@@ -261,10 +268,14 @@ def agent_message(project_id: int, body: ChatIn, db: Session = Depends(get_db)):
         structured=card.model_dump(by_alias=True) if card else None,
         delivered_via="local",
     )
+    error = None
     if card is not None:
         coordinator.handle_card(db, p, card, msg)
+    elif error := coordinator.card_error(body.content):
+        coordinator.reject_invalid_card(db, p.id, body.sender_name, error)
     db.commit()
-    return {"card_recognized": card is not None, "card_type": card.type if card else None}
+    return {"card_recognized": card is not None, "card_type": card.type if card else None,
+            "card_error": error}
 
 
 # ----------------------------------------------------------- activity/metrics
