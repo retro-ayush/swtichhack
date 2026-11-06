@@ -58,7 +58,8 @@ A3. Register the coordinator identity (~5 min)
   Console builds run those agents through their controller and never hand
   out credentials, so the TeamPilot backend could not act as that agent.
   (If you already created one there, delete it first.)
-  [ ] Open the Switch Gateway: http://localhost:<gateway port>
+  [ ] (Console's local mode has no Gateway web page; the script below uses
+      the Gateway API instead.) Old manual route: http://localhost:<gateway port>
       (the port is in ~/Library/Application Support/switchdash/local-switch-server/ports.json,
       "gateway"; it was 61061 on our Mac). Sign in as admin@switch.local; the
       password is the GATEWAY_ADMIN_PASSWORD line in
