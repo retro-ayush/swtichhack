@@ -74,12 +74,15 @@ short version:
 1. `python3 scripts/build_agent_prompts.py <demo-repo-url>` writes
    paste-ready instructions to `agents/dist/`.
 2. In Switch Console, register `teampilot-frontend|backend|testing|reviewer`
-   (Claude Code, "Anyone" may talk) and `teampilot-coordinator` (directory
-   `backend/`, no session). Create a room with all five, and paste
-   `agents/dist/room-instructions.txt` as its instructions.
-3. Run `python3 scripts/switch_env.py --room-only <ROOM_ID>`. It copies the
-   coordinator's credentials into `backend/.env`.
-4. Restart the backend. The sidebar shows **Switch: connected**.
+   (Claude Code or Antigravity, "Anyone" may talk).
+3. Create a personal registration key on the Switch Gateway's **API keys**
+   page, then run `python3 scripts/register_coordinator.py`. It registers
+   `teampilot-coordinator` as a custom agent (`POST /agents`) and writes its
+   credentials to `backend/.env`. The coordinator is not created in Console's
+   agent form, because Console-managed agents are run by its controller.
+4. Create a room with all five agents, paste `agents/dist/room-instructions.txt`
+   as its instructions, then run `python3 scripts/switch_env.py --room-only <ROOM_ID>`.
+5. Restart the backend. The sidebar shows **Switch: connected**.
 
 ## Try the demo flow (no credentials needed)
 
