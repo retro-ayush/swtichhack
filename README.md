@@ -97,6 +97,8 @@ short version:
    `/approvals` or in chat. The decision and the reason go into the audit log.
 5. `demo-repo/` contains a deliberately introduced, safe bug for the agents to
    fix (`python3 -m pytest demo-repo -q` reports 2 failures until it's fixed).
+   It is published as its own repo for the agents to work on:
+   [retro-ayush/teampilot-demo-app](https://github.com/retro-ayush/teampilot-demo-app).
 
 ## Guarantees the engine enforces (tested)
 
